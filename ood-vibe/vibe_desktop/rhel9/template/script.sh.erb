@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+
+# Clean the environment
+module purge
+
+# Set working directory to home directory
+cd "${HOME}"
+
+# Ensure the vibe-desktop cache folder is available
+mkdir -p "${HOME}/.cache/.vibe/"
+
+# xfce configuration maintenance
+## Clean up previous monitors
+if [[ -f "${HOME}/.config/monitors.xml" ]]; then
+  mv "${HOME}/.config/monitors.xml" "${HOME}/.config/monitors.xml.bak"
+fi
+
+## Copy over default panel if doesn't exist, otherwise it will prompt the user
+PANEL_CONFIG="${HOME}/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
+if [[ ! -e "${PANEL_CONFIG}" ]]; then
+  mkdir -p "$(dirname "${PANEL_CONFIG}")"
+  cp "/etc/xdg/xfce4/panel/default.xml" "${PANEL_CONFIG}"
+fi
+
+## Set Xfce4 Terminal as login shell (sets proper TERM)
+TERM_CONFIG="${HOME}/.config/xfce4/terminal/terminalrc"
+if [[ ! -e "${TERM_CONFIG}" ]]; then
+  mkdir -p "$(dirname "${TERM_CONFIG}")"
+  sed 's/^ \{4\}//' > "${TERM_CONFIG}" << EOL
+    [Configuration]
+    CommandLoginShell=TRUE
+EOL
+else
+  sed -i \
+    '/^CommandLoginShell=/{h;s/=.*/=TRUE/};${x;/^$/{s//CommandLoginShell=TRUE/;H};x}' \
+    "${TERM_CONFIG}"
+fi
+
+#
+# Launch Xfce Window Manager and Panel
+#
+echo "Setting environment variables..."
+
+# configure DISPLAY for container
+export APPTAINERENV_DISPLAY=$DISPLAY
+export SEND_256_COLORS_TO_REMOTE=1
+export APPTAINERENV_SEND_256_COLORS_TO_REMOTE="$SEND_256_COLORS_TO_REMOTE"
+
+# Set the user folder
+export XDG_CONFIG_HOME="<%= session.staged_root.join("config") %>"
+export APPTAINERENV_XDG_CONFIG_HOME="$XDG_CONFIG_HOME"
+
+export XDG_DATA_HOME="<%= session.staged_root.join("share") %>"
+export APPTAINERENV_XDG_DATA_HOME="$XDG_DATA_HOME"
+
+export XDG_CACHE_HOME="${HOME}/.cache/.vibe/"
+export APPTAINERENV_XDG_CACHE_HOME="$XDG_CACHE_HOME"
+
+export APPTAINERENV_PATH=$PATH
+export APPTAINERENV_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
+
+echo "Starting desktop instance"
+
+module restore
+set -x
+
+# Launch dbus-launch with full path to prevent conda PATH issues (https://github.com/OSC/ondemand/issues/700)
+export $(apptainer exec instance://$INSTANCE_NAME /usr/bin/dbus-launch 2>/dev/null)
+export APPTAINERENV_DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS
+export APPTAINERENV_DBUS_SESSION_BUS_PID=$DBUS_SESSION_BUS_PID
+
+echo "Starting xfce desktop..."
+
+# Launche xfce window manager
+apptainer exec instance://$INSTANCE_NAME xfwm4 --compositor=off --sm-client-disable
+#
+apptainer exec instance://$INSTANCE_NAME xsetroot -solid "#D3D3D3"
+#
+apptainer exec instance://$INSTANCE_NAME xfsettingsd --sm-client-disable --daemon
+# disable ssh autostart
+apptainer exec instance://$INSTANCE_NAME xfconf-query -c xfce4-session -p /startup/ssh-agent/enabled -n -t bool -s false
+# disable gpg autostart
+apptainer exec instance://$INSTANCE_NAME xfconf-query -c xfce4-session -p /startup/gpg-agent/enabled -n -t bool -s false
+# launch the desktop panel (used by HPC to monitor if desktop is still running)
+apptainer exec instance://$INSTANCE_NAME xfce4-panel --sm-client-disable

@@ -1,0 +1,20 @@
+Bootstrap: docker
+
+From: rockylinux/rockylinux:8
+
+%environment
+  PATH=/opt/TurboVNC/bin:$PATH
+  LANGUAGE="en_US.UTF-8"
+  LC_ALL="en_US.UTF-8"
+  LANG="en_US.UTF-8"
+
+%post
+    dnf install -y epel-release
+    dnf groupinstall -y xfce
+    dnf install -y python3-pip xorg-x11-xauth
+    pip3 install ts
+    dnf install -y https://yum.osc.edu/ondemand/latest/compute/el8Server/x86_64/python3-websockify-0.10.0-1.el8.noarch.rpm
+    dnf install -y https://yum.osc.edu/ondemand/latest/compute/el8Server/x86_64/turbovnc-2.2.5-1.el8.x86_64.rpm
+    dnf clean all
+    chown root:root /opt/TurboVNC/etc/turbovncserver-security.conf
+    rm -rf /var/cache/dnf/*

@@ -1,0 +1,16 @@
+---
+batch_connect:
+    template: "vnc_container"
+    websockify_cmd: "/usr/bin/websockify"
+    container_path: "/storage/homefs/jm25l486/ondemand/dev/vibe_desktop_rhel8_xfce-minimal/images/vibe_desktop_rhel8_xfce-minimal_alpha.sif"
+    container_bindpath: ""
+    container_module: ""
+    container_command: "apptainer"
+script:
+    native:
+        - "--cpus-per-task=<%= num_cores %>"
+        - "--mem=<%= memtask %>G"
+        - "--partition=<%= part %>"
+        <% if part == 'gpu' %>
+        - "--gres=gpu:<%= gpu_model %>:<%= num_gpus %>"
+        <% end %>

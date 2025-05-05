@@ -1,0 +1,8 @@
+---
+name: VIBE Desktop (RHEL 9, xfce-minimal)- Alpha
+category: Data Science Lab
+subcategory: VIBE
+role: batch_connect
+description: Virtual desktop with all tools for image analysis.
+# metadata:
+#   field_of_science: botan
